@@ -1089,11 +1089,7 @@ S: (Ul Mr Nd) (Ur Md Nl) (lUr rMd dNl) (mRu nDm uLn)`;
             work.postMessage(getWorkerData());
 
             work.onmessage = function (event) {
-                if (event.data.type === "stop") {
-                    stopSearch(allSolutions);
-                    let msg = event.data.value;
-                    if (msg !== null) { alert(msg) } else { updateStats() }
-                } else if (event.data.type === "depthUpdate") {
+                if (event.data.type === "depthUpdate") {
                     depth++;
                     //document.getElementById("progUpdate"+solveID).innerHTML = "<small>Searching depth "+depth+"</small>";
                 } else if (event.data.type === "solution") {
@@ -1163,6 +1159,24 @@ S: (Ul Mr Nd) (Ur Md Nl) (lUr rMd dNl) (mRu nDm uLn)`;
                     moveWeights = event.data.value;
                 } else if (event.data.type === "debug") {
                     debugVars.push(event.data.value);
+                } else if (event.data.type === "stop") {
+                    // Save the last case if there are solutions
+                    if (caseSolutions.length > 0) {
+                        caseSolutions.sort((a, b) => a.speed - b.speed);
+                        let maxSolutions = parseInt(document.getElementById("maxSolutions").value, 10);
+                        let limitedSolutions = caseSolutions.slice(0, maxSolutions);
+
+                        allSolutions.push({
+                            caseNum: caseNum,
+                            setup: currentSetup,
+                            solutions: limitedSolutions
+                        });
+                        updateStats();
+                    }
+
+                    stopSearch(allSolutions);
+                    let msg = event.data.value;
+                    if (msg !== null) { alert(msg) }
                 }
             }
         }
@@ -1276,35 +1290,14 @@ S: (Ul Mr Nd) (Ur Md Nl) (lUr rMd dNl) (mRu nDm uLn)`;
         document.getElementById("info-fails").addEventListener("touchend", copyFails, false);
 
         function saveSolutionsToFile(allSolutions) {
-            let content = "Batch Solver Results\n";
-            content += "====================\n\n";
-            content += "Sort Metric: " + sortCriteria + "\n";
-            if (secondaryMetric !== "None") {
-                content += "Secondary Metric: " + secondaryMetric + "\n";
-            }
-            content += "Max solutions per case: " + document.getElementById("maxSolutions").value + "\n\n";
+            let content = "";
 
             for (let caseData of allSolutions) {
-                content += "Case #" + caseData.caseNum + "\n";
-                content += "Setup: " + caseData.setup + "\n";
-                content += "Solutions:\n";
-
                 for (let sol of caseData.solutions) {
-                    content += "  " + sol.speed.toFixed(2) + " - " + sol.solution + "\n";
+                    // Format: "movecount solution" (just the STM value and the solution)
+                    content += Math.round(sol.speed) + " " + sol.solution + "\n";
                 }
-                content += "\n";
             }
-
-            // Add statistics at the end
-            content += "STATISTICS\n";
-            content += "==========\n";
-            content += "Total cases: " + allSolutions.length + "\n";
-            content += "Failed cases: " + failed.length + "\n";
-            content += "Average MCC: " + document.getElementById("info-mcc").innerHTML + "\n";
-            content += "Average STM: " + document.getElementById("info-stm").innerHTML + "\n";
-            content += "Average SQTM: " + document.getElementById("info-sqtm").innerHTML + "\n";
-            content += "Average ESQ: " + document.getElementById("info-esq").innerHTML + "\n";
-            content += "Time per case: " + document.getElementById("info-time").innerHTML + "\n";
 
             // Create and download file
             const blob = new Blob([content], { type: 'text/plain' });
